@@ -140,6 +140,11 @@
   }
   .chip:hover { border-color: var(--accent); color: var(--accent); }
   .chip.on { background: var(--accent); border-color: var(--accent); color: var(--white); }
+  /* 라벨 줄 안에 작은 토글을 넣어도 옆 칸 입력창과 높이가 같도록 줄 높이를 라벨(12px×1.5)에 고정 */
+  .label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 18px; margin-bottom: 8px; }
+  .label-row .label { margin-bottom: 0; white-space: nowrap; }
+  .chips.chips-mini { margin: 0; gap: 4px; flex-wrap: nowrap; }
+  .chips.chips-mini .chip { font-size: 12px; padding: 3px 10px; line-height: 1.2; white-space: nowrap; }
   .is-hidden { display: none !important; }
   .fixed-note {
     background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 12px 14px;
@@ -539,12 +544,14 @@
     <div class="grid-2" style="align-items:stretch;margin-top:6px;">
       <div class="sub-card">
         <div class="sub-card-title">① 이만큼 더 사면 평단은?</div>
-        <div class="chips" id="plan-mode" style="margin:0 0 10px;">
-          <button class="chip on" type="button" data-pm="qty">수량으로</button>
-          <button class="chip" type="button" data-pm="amt">금액으로</button>
-        </div>
         <div class="input-group">
-          <label class="label" for="plan-val" id="plan-val-label">추가 매수 수량</label>
+          <div class="label-row">
+            <label class="label" for="plan-val" id="plan-val-label">추가 매수 수량</label>
+            <div class="chips chips-mini" id="plan-mode">
+              <button class="chip on" type="button" data-pm="qty">수량으로</button>
+              <button class="chip" type="button" data-pm="amt">금액으로</button>
+            </div>
+          </div>
           <div class="input-wrap">
             <input type="number" id="plan-val" data-unit="주" step="any" min="0" inputmode="decimal">
             <span class="input-currency empty" id="plan-val-display">입력</span>
