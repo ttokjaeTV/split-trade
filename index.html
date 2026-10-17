@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script src="https://ttokjaetv.github.io/member-lock.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>분할매수·분할매도 평단가 계산기 · 똑재TV</title>
 <meta name="description" content="여러 번 나눠 사고판 거래를 넣으면 지금 평단가, 보유 수량, 실현손익을 계산합니다. 증권사 앱 방식(이동평균법)과 선입선출법을 나란히 비교하고, 다음 매수 후 평단과 목표 평단까지 필요한 수량도 역산합니다.">
@@ -501,7 +502,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" data-member="회차별 차트">
     <h3 class="chart-title">회차별 가격과 평단 변화</h3>
     <p class="chart-subtitle" id="chart-subtitle">-</p>
     <div class="chart-container"><canvas id="trade-chart"></canvas></div>
@@ -511,8 +512,8 @@
     <h3 class="chart-title">회차별 상세 데이터</h3>
     <p class="chart-subtitle" id="table-subtitle">-</p>
     <div class="dl-bar">
-      <button type="button" class="dl-btn" id="dl-csv">CSV 내려받기</button>
-      <button type="button" class="dl-btn" id="dl-xlsx">엑셀(.xlsx) 내려받기</button>
+      <button type="button" class="dl-btn" id="dl-csv" data-member-click="엑셀 내려받기">CSV 내려받기</button>
+      <button type="button" class="dl-btn" id="dl-xlsx" data-member-click="엑셀 내려받기">엑셀(.xlsx) 내려받기</button>
       <span class="dl-note" id="dl-note">회차별 표에 수수료·선입선출 평단을 더해 담습니다 (원 단위 숫자)</span>
     </div>
     <div class="table-wrap">
@@ -559,7 +560,7 @@
         </div>
         <div class="plan-out" id="plan-add-out">-</div>
       </div>
-      <div class="sub-card">
+      <div class="sub-card" data-member="목표 평단 역산">
         <div class="sub-card-title">② 목표 평단까지 몇 주 더?</div>
         <div class="input-group">
           <label class="label" for="plan-target">목표 평단</label>
@@ -1268,6 +1269,7 @@ function bindEvents() {
   });
   document.getElementById('tr-add').addEventListener('click', () => {
     if (TRADES.length >= MAX_ROWS) return;
+    if (TRADES.length >= 5 && window.TJLock && !TJLock.allow('거래 6줄 이상')) return;   // 멤버십: 무료는 5줄까지
     TRADES.push(blankRow('b'));
     renderRows(); render();
     const ins = document.querySelectorAll(`.tr-in[data-i="${TRADES.length - 1}"]`);
@@ -1350,6 +1352,10 @@ function readUrl() {
       const a = s.split(':');
       return { side: a[0] === 's' ? 's' : 'b', price: cleanNum(a[1]), qty: cleanNum(a[2]), fee: cleanNum(a[3]) };
     }).filter(r => r.price !== '' || r.qty !== '');
+    if (rows.length > 5 && window.TJLock && TJLock.locked()) {   // 멤버십: 잠긴 상태로 받은 링크는 앞 5줄만
+      rows.length = 5;
+      TJLock.prompt('거래 6줄 이상');
+    }
     if (rows.length) TRADES = rows;
   }
   const setv = (k, id) => { if (q.has(k)) document.getElementById(id).value = cleanNum(q.get(k)); };
