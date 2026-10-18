@@ -423,6 +423,7 @@
         <span class="mt-desc">가격·손익을 달러($)로 표기</span>
       </button>
     </div>
+    <div class="input-hint is-hidden" id="us-tax-note" style="margin-top:10px;">실제 해외주식 양도세는 원화로 환산한 금액(매수일·매도일 환율)으로 계산하므로, 여기 나오는 달러 손익이 세금 계산 금액은 아닙니다. 원가 계산 방식(이동평균·선입선출)도 내 증권사가 적용하는 방식을 따릅니다.</div>
   </div>
 
   <!-- STEP 02 : 거래 입력 -->
@@ -771,7 +772,7 @@ const roundPrice = v => v == null ? null : (isUS() ? Math.round(v * 10000) / 100
 // 이동평균법: 매수 때 평단 갱신, 매도 때 평단 유지 · 실현손익 = 매도금액 − 평단 × 수량
 // 선입선출법: 먼저 산 매수분(lot)부터 꺼내 원가 계산
 function calc(trades) {
-  const out = { rows: [], valid: [], buyAmt: 0, sellAmt: 0, fee: 0, maReal: 0, fifoReal: 0, nBuy: 0, nSell: 0,
+  const out = { rows: [], valid: [], buyAmt: 0, sellAmt: 0, fee: 0, buyFee: 0, maReal: 0, fifoReal: 0, nBuy: 0, nSell: 0,
     minBuy: Infinity, maxBuy: -Infinity, errors: 0, filled: 0 };
   let qty = 0, cost = 0;
   const lots = [];
@@ -785,7 +786,7 @@ function calc(trades) {
       const amt = p * q + r.fee;
       qty += q; cost += amt;
       lots.push({ q, unit: amt / q });
-      out.buyAmt += amt; out.nBuy++;
+      out.buyAmt += amt; out.buyFee += r.fee; out.nBuy++;
       out.minBuy = Math.min(out.minBuy, p); out.maxBuy = Math.max(out.maxBuy, p);
       r.amount = amt; r.maPL = null; r.fifoPL = null;
     } else {
@@ -928,7 +929,12 @@ function render() {
         vSub.innerHTML = `팔아서 확정된 손익은 증권사 앱 방식(이동평균)으로 ${hlMoney(c.maReal)}, 먼저 산 것부터 판 것으로 보면(선입선출) ${hlMoney(c.fifoReal)}입니다.` +
           (Math.abs(diff) >= (isUS() ? 0.005 : 0.5) ? ` 같은 거래인데 <strong>${fmtMoney(Math.abs(diff))}</strong> 차이가 나는 이유는 아래 '두 방식 비교'에서 확인하세요.` : ' 이번 거래에서는 두 방식의 결과가 같습니다.');
       } else {
-        vSub.innerHTML = `${c.nBuy}번 나눠 사서 총 <strong>${fmtMoney(c.buyAmt)}</strong>${jo('을', '를')} 넣었습니다. 가장 싸게 산 가격(${fmtPrice(c.minBuy)})과 가장 비싸게 산 가격(${fmtPrice(c.maxBuy)}) 사이에서, <strong>많이 산 가격일수록 무겁게</strong> 반영한 평균입니다.`;
+        const feeTail = c.buyFee > 0 ? '에 1주당 수수료를 더한 값입니다' : '과 같습니다';
+        vSub.innerHTML = c.nBuy === 1
+          ? `한 번에 사서 총 <strong>${fmtMoney(c.buyAmt)}</strong>${jo('을', '를')} 넣었습니다. 평단은 산 가격(${fmtPrice(c.minBuy)})${feeTail}.`
+          : c.minBuy === c.maxBuy
+          ? `${c.nBuy}번 나눠 사서 총 <strong>${fmtMoney(c.buyAmt)}</strong>${jo('을', '를')} 넣었습니다. 모두 같은 가격에 샀으므로 평단은 산 가격(${fmtPrice(c.minBuy)})${feeTail}.`
+          : `${c.nBuy}번 나눠 사서 총 <strong>${fmtMoney(c.buyAmt)}</strong>${jo('을', '를')} 넣었습니다. 가장 싸게 산 가격(${fmtPrice(c.minBuy)})과 가장 비싸게 산 가격(${fmtPrice(c.maxBuy)}) 사이에서, <strong>많이 산 가격일수록 무겁게</strong> 반영한 평균입니다.`;
       }
     } else {
       vMain.innerHTML = `모두 팔았습니다. 확정 손익은 ${hlMoney(c.maReal)}입니다`;
@@ -936,7 +942,7 @@ function render() {
     }
     setStat('s1', c.qty > 0 ? fmtPrice(c.avg) : '-', c.qty > 0 ? `선입선출 기준 남은 매수분 평균 ${fmtPrice(c.fifoAvg)}` : '보유 수량 없음');
     setStat('s2', fmtQty(c.qty), `매수 ${c.nBuy}회 · 매도 ${c.nSell}회`);
-    setStat('s3', fmtMoney(c.buyAmt), (c.nSell ? `매도로 돌려받은 돈 ${fmtMoney(c.sellAmt)}` : '모든 매수의 합계') + (c.fee > 0 ? ` · 수수료 ${fmtMoney(c.fee)} 포함` : ''));
+    setStat('s3', fmtMoney(c.buyAmt), (c.nSell ? `매도로 돌려받은 돈 ${fmtMoney(c.sellAmt)}` : '모든 매수의 합계') + (c.buyFee > 0 ? ` · 매수 수수료 ${fmtMoney(c.buyFee)} 포함` : ''));
     setStat('s4', c.nSell ? fmtMoney(c.maReal, true) : '-', c.nSell ? `선입선출 기준 ${fmtMoney(c.fifoReal, true)}` : '아직 판 적이 없습니다');
     sumNote.innerHTML = c.qty > 0
       ? `지금 <b>${fmtQty(c.qty)}</b> · 평단 <b>${fmtPrice(c.avg)}</b>${ev ? ` · 평가손익 <b>${fmtMoney(ev.ma, true)}</b>` : ''}`
@@ -1226,6 +1232,7 @@ function updateDisplays() {
   document.getElementById('plan-val-label').textContent = PLAN_MODE === 'amt' ? '추가로 넣을 금액' : '추가 매수 수량';
   document.querySelectorAll('#plan-mode .chip').forEach(ch => ch.classList.toggle('on', ch.dataset.pm === PLAN_MODE));
   document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.market === MARKET));
+  document.getElementById('us-tax-note').classList.toggle('is-hidden', !isUS());
   const money = isUS() ? '$' : '원';
   document.getElementById('th-price').textContent = `가격(${money})`;
   document.getElementById('th-fee').textContent = `수수료(${money}, 선택)`;
